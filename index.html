@@ -385,7 +385,9 @@
             });
 
             asset.on('progress', (progress) => {
-                const pct = Math.round(progress * 100);
+                /* progress may be 0-1 or 0-100 depending on engine version */
+                const raw = progress > 1 ? progress : progress * 100;
+                const pct = Math.min(100, Math.round(raw));
                 bar.style.width = pct + '%';
                 pctText.textContent = pct + ' %';
             });
