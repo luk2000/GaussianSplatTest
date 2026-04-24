@@ -177,6 +177,9 @@
     const MIN_DISTANCE = 0.5;
     const MAX_DISTANCE = 50;
 
+    /** Auto-rotate speed in degrees per second (0 to disable) */
+    const AUTO_ROTATE_SPEED = 15;
+
     /* ================================================================
      *  APPLICATION INIT
      * ================================================================ */
@@ -328,7 +331,19 @@
         }, { passive: true });
 
         /* ── Update loop ── */
+        /* Auto-rotate stops on first user interaction */
+        let autoRotate = AUTO_ROTATE_SPEED > 0;
+        function stopAutoRotate() { autoRotate = false; }
+        canvas.addEventListener('pointerdown', stopAutoRotate, { once: true });
+        canvas.addEventListener('wheel', stopAutoRotate, { once: true });
+        canvas.addEventListener('touchstart', stopAutoRotate, { once: true });
+
         app.on('update', (dt) => {
+            if (autoRotate) {
+                orbit.targetYaw -= AUTO_ROTATE_SPEED * dt;
+                orbit.yaw = orbit.targetYaw;
+            }
+
             const d = 1 - Math.pow(1 - DAMPING, dt * 60);
 
             orbit.yaw      += (orbit.targetYaw - orbit.yaw) * d;
