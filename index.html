@@ -328,6 +328,7 @@
         groundMat.opacityMapChannel = 'a';
         groundMat.blendType = pc.BLEND_NORMAL;
         groundMat.depthWrite = false;
+        groundMat.cull = pc.CULLFACE_NONE;
         groundMat.update();
         ground.render.meshInstances[0].material = groundMat;
 
