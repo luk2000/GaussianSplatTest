@@ -213,6 +213,7 @@
     /** List of available splat files – add entries here to populate the selector */
     const SPLAT_FILES = [
         { label: 'LukasShoeAddidas03', url: './LukasShoeAddidas03.sog' },
+        { label: 'LukasShoeAddidas04', url: './LukasShoeAddidas04.sog' },
         { label: 'TimoShoe', url: './TimoShoe.sog' },
     ];
 
@@ -296,9 +297,35 @@
         ground.setPosition(0, 0, 0);
 
         /* Create a semi-transparent material for the ground */
+        /* Generate radial gradient opacity texture */
+        const texSize = 256;
+        const texData = new Uint8Array(texSize * texSize * 4);
+        for (let y = 0; y < texSize; y++) {
+            for (let x = 0; x < texSize; x++) {
+                const u = (x / (texSize - 1)) * 2 - 1;
+                const v = (y / (texSize - 1)) * 2 - 1;
+                const dist = Math.sqrt(u * u + v * v);
+                const alpha = Math.max(0, 1 - Math.pow(Math.min(dist, 1), 1.5));
+                const a = Math.round(alpha * 180);
+                const i = (y * texSize + x) * 4;
+                texData[i] = 255; texData[i+1] = 255; texData[i+2] = 255; texData[i+3] = a;
+            }
+        }
+        const opacityTex = new pc.Texture(app.graphicsDevice, {
+            width: texSize, height: texSize,
+            format: pc.PIXELFORMAT_RGBA8,
+            addressU: pc.ADDRESS_CLAMP_TO_EDGE,
+            addressV: pc.ADDRESS_CLAMP_TO_EDGE,
+            minFilter: pc.FILTER_LINEAR,
+            magFilter: pc.FILTER_LINEAR
+        });
+        opacityTex.lock().set(texData);
+        opacityTex.unlock();
+
         const groundMat = new pc.StandardMaterial();
         groundMat.diffuse = new pc.Color(0.15, 0.15, 0.18);
-        groundMat.opacity = 0.5;
+        groundMat.opacityMap = opacityTex;
+        groundMat.opacityMapChannel = 'a';
         groundMat.blendType = pc.BLEND_NORMAL;
         groundMat.depthWrite = false;
         groundMat.update();
