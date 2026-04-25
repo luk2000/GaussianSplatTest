@@ -363,12 +363,12 @@
         }, { passive: true });
 
         /* ── Update loop ── */
-        /* Auto-rotate stops on first user interaction */
+        /* Auto-rotate stops on any user interaction */
         let autoRotate = AUTO_ROTATE_SPEED > 0;
         function stopAutoRotate() { autoRotate = false; }
-        canvas.addEventListener('pointerdown', stopAutoRotate, { once: true });
-        canvas.addEventListener('wheel', stopAutoRotate, { once: true });
-        canvas.addEventListener('touchstart', stopAutoRotate, { once: true });
+        canvas.addEventListener('pointerdown', stopAutoRotate);
+        canvas.addEventListener('wheel', stopAutoRotate);
+        canvas.addEventListener('touchstart', stopAutoRotate);
 
         app.on('update', (dt) => {
             if (autoRotate) {
@@ -470,8 +470,9 @@
                 currentAsset = asset;
 
                 asset.on('progress', (progress) => {
+                    /* Cap at 90% — the remaining 10% covers parsing/decompression */
                     const raw = progress > 1 ? progress : progress * 100;
-                    const pct = Math.min(100, Math.round(raw));
+                    const pct = Math.min(90, Math.round(raw));
                     bar.style.width = pct + '%';
                     pctText.textContent = pct + ' %';
                 });
@@ -517,11 +518,15 @@
                         initialOrbit.pitch = orbit.pitch;
                     }
 
+                    /* Show 100% before hiding */
+                    bar.style.width = '100%';
+                    pctText.textContent = '100 %';
+
                     /* Re-enable auto-rotate on each load */
                     autoRotate = AUTO_ROTATE_SPEED > 0;
 
-                    /* Hide loading screen */
-                    loading.classList.add('hidden');
+                    /* Hide loading screen (short delay so user sees 100%) */
+                    setTimeout(() => loading.classList.add('hidden'), 300);
                     setTimeout(() => { loading.style.display = 'none'; }, 700);
 
                     resetBtn.style.display = 'flex';
@@ -539,11 +544,11 @@
                 /* Fallback indeterminate progress */
                 let fakeProgress = 0;
                 const fakeInterval = setInterval(() => {
-                    if (asset.loaded || fakeProgress >= 90) {
+                    if (asset.loaded || fakeProgress >= 85) {
                         clearInterval(fakeInterval);
                         return;
                     }
-                    fakeProgress += (90 - fakeProgress) * 0.02;
+                    fakeProgress += (85 - fakeProgress) * 0.02;
                     const current = parseFloat(bar.style.width) || 0;
                     if (fakeProgress > current) {
                         bar.style.width = fakeProgress + '%';
