@@ -119,8 +119,34 @@
             -webkit-backdrop-filter: blur(8px);
             transition: background 0.2s, color 0.2s;
         }
-        #reset-btn:hover {
+        #reset-btn:hover, #plane-btn:hover {
             background: rgba(0, 0, 0, 0.6);
+            color: #fff;
+        }
+
+        /* ── Ground Plane Toggle ── */
+        #plane-btn {
+            position: fixed;
+            bottom: 16px;
+            right: 60px;
+            width: 36px;
+            height: 36px;
+            border: none;
+            border-radius: 8px;
+            background: rgba(0, 0, 0, 0.4);
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 15px;
+            cursor: pointer;
+            z-index: 50;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            transition: background 0.2s, color 0.2s;
+        }
+        #plane-btn.active {
+            background: rgba(100, 130, 255, 0.4);
             color: #fff;
         }
 
@@ -170,6 +196,9 @@
     <!-- Splat Selector -->
     <div id="splat-selector"><select id="splat-select"></select></div>
 
+    <!-- Ground Plane Toggle -->
+    <button id="plane-btn" class="active" title="Toggle ground plane">⬚</button>
+
     <!-- Reset Camera -->
     <button id="reset-btn" title="Reset camera">⟲</button>
 
@@ -183,7 +212,7 @@
 
     /** List of available splat files – add entries here to populate the selector */
     const SPLAT_FILES = [
-        { label: 'LukasShoeAddidas', url: './LukasShoeAddidas.sog' },
+        { label: 'LukasShoeAddidas03', url: './LukasShoeAddidas03.sog' },
         { label: 'TimoShoe', url: './TimoShoe.sog' },
     ];
 
@@ -223,6 +252,7 @@
         const errEl   = document.getElementById('error-message');
         const hint    = document.getElementById('hint');
         const resetBtn = document.getElementById('reset-btn');
+        const planeBtn = document.getElementById('plane-btn');
 
         /* ── Create PlayCanvas application ── */
         const app = new pc.Application(canvas, {
@@ -258,6 +288,29 @@
         });
         light.setEulerAngles(45, 30, 0);
         app.root.addChild(light);
+
+        /* ── Ground plane ── */
+        const ground = new pc.Entity('ground-plane');
+        ground.addComponent('render', { type: 'plane' });
+        ground.setLocalScale(10, 1, 10);
+        ground.setPosition(0, 0, 0);
+
+        /* Create a semi-transparent material for the ground */
+        const groundMat = new pc.StandardMaterial();
+        groundMat.diffuse = new pc.Color(0.15, 0.15, 0.18);
+        groundMat.opacity = 0.5;
+        groundMat.blendType = pc.BLEND_NORMAL;
+        groundMat.depthWrite = false;
+        groundMat.update();
+        ground.render.meshInstances[0].material = groundMat;
+
+        app.root.addChild(ground);
+
+        /* Toggle ground plane */
+        planeBtn.addEventListener('click', () => {
+            ground.enabled = !ground.enabled;
+            planeBtn.classList.toggle('active');
+        });
 
         /* ================================================================
          *  ORBIT CAMERA CONTROLLER
@@ -516,6 +569,12 @@
                         initialOrbit.distance = dist;
                         initialOrbit.yaw = orbit.yaw;
                         initialOrbit.pitch = orbit.pitch;
+
+                        /* Position ground plane at bottom of splat */
+                        const groundY = center.y - halfExtents.y;
+                        ground.setPosition(center.x, groundY, center.z);
+                        const planeSize = Math.max(halfExtents.x, halfExtents.z) * 4;
+                        ground.setLocalScale(planeSize, 1, planeSize);
                     }
 
                     /* Show 100% before hiding */
@@ -530,6 +589,7 @@
                     setTimeout(() => { loading.style.display = 'none'; }, 700);
 
                     resetBtn.style.display = 'flex';
+                    planeBtn.style.display = 'flex';
 
                     if (firstLoad) {
                         hint.classList.add('visible');
