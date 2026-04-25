@@ -365,21 +365,13 @@
             camera.lookAt(orbit.lookAt);
         });
 
-        /* ── Reset camera ── */
+        /* ── Reset camera (uses initial values, updated after splat loads) ── */
+        const initialOrbit = { yaw: orbit.yaw, pitch: orbit.pitch, distance: orbit.distance, lookAt: orbit.lookAt.clone() };
         function resetCamera() {
-            orbit.targetYaw = 0;
-            orbit.targetPitch = -15;
-            orbit.targetDistance = vecLength(CAMERA_START_POS, CAMERA_LOOK_AT);
-            orbit.targetLookAt.set(CAMERA_LOOK_AT[0], CAMERA_LOOK_AT[1], CAMERA_LOOK_AT[2]);
-            (function initOrbitAngles() {
-                const dx = CAMERA_START_POS[0] - CAMERA_LOOK_AT[0];
-                const dy = CAMERA_START_POS[1] - CAMERA_LOOK_AT[1];
-                const dz = CAMERA_START_POS[2] - CAMERA_LOOK_AT[2];
-                const dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
-                orbit.targetPitch = Math.asin(dy / dist) * (180 / Math.PI);
-                orbit.targetYaw   = Math.atan2(dx, dz) * (180 / Math.PI);
-                orbit.targetDistance = dist;
-            })();
+            orbit.targetYaw = initialOrbit.yaw;
+            orbit.targetPitch = initialOrbit.pitch;
+            orbit.targetDistance = initialOrbit.distance;
+            orbit.targetLookAt.copy(initialOrbit.lookAt);
         }
         resetBtn.addEventListener('click', resetCamera);
 
@@ -426,6 +418,30 @@
                 });
                 splatEntity.setEulerAngles(180, 0, 0);
                 app.root.addChild(splatEntity);
+
+                /* Center camera on splat bounding box */
+                const aabb = splatEntity.gsplat && splatEntity.gsplat.instance
+                    ? splatEntity.gsplat.instance.meshInstance.aabb
+                    : null;
+                if (aabb) {
+                    const center = aabb.center;
+                    const halfExtents = aabb.halfExtents;
+                    const radius = Math.sqrt(
+                        halfExtents.x * halfExtents.x +
+                        halfExtents.y * halfExtents.y +
+                        halfExtents.z * halfExtents.z
+                    );
+                    const dist = radius * 2.5;
+                    orbit.targetLookAt.set(center.x, center.y, center.z);
+                    orbit.lookAt.set(center.x, center.y, center.z);
+                    orbit.targetDistance = dist;
+                    orbit.distance = dist;
+                    /* Update reset values to match centered position */
+                    initialOrbit.lookAt.copy(orbit.lookAt);
+                    initialOrbit.distance = dist;
+                    initialOrbit.yaw = orbit.yaw;
+                    initialOrbit.pitch = orbit.pitch;
+                }
 
                 /* Hide loading screen */
                 loading.classList.add('hidden');
