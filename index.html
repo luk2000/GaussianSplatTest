@@ -286,7 +286,8 @@
         /* ── Create PlayCanvas application ── */
         const app = new pc.Application(canvas, {
             graphicsDeviceOptions: {
-                alpha: TRANSPARENT_BG
+                alpha: TRANSPARENT_BG,
+                antialias: true
             },
             mouse: new pc.Mouse(canvas),
             touch: 'ontouchstart' in window ? new pc.TouchDevice(canvas) : null
