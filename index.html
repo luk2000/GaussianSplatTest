@@ -145,8 +145,34 @@
             -webkit-backdrop-filter: blur(8px);
             transition: background 0.2s, color 0.2s;
         }
-        #plane-btn.active {
+        #plane-btn.active, #shadow-btn.active {
             background: rgba(100, 130, 255, 0.4);
+            color: #fff;
+        }
+
+        /* ── Shadow Toggle ── */
+        #shadow-btn {
+            position: fixed;
+            bottom: 16px;
+            right: 104px;
+            width: 36px;
+            height: 36px;
+            border: none;
+            border-radius: 8px;
+            background: rgba(0, 0, 0, 0.4);
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 15px;
+            cursor: pointer;
+            z-index: 50;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            transition: background 0.2s, color 0.2s;
+        }
+        #shadow-btn:hover {
+            background: rgba(0, 0, 0, 0.6);
             color: #fff;
         }
 
@@ -195,6 +221,9 @@
 
     <!-- Splat Selector -->
     <div id="splat-selector"><select id="splat-select"></select></div>
+
+    <!-- Shadow Toggle -->
+    <button id="shadow-btn" class="active" title="Toggle shadow">●</button>
 
     <!-- Ground Plane Toggle -->
     <button id="plane-btn" title="Toggle ground plane">⬚</button>
@@ -256,6 +285,7 @@
         const hint    = document.getElementById('hint');
         const resetBtn = document.getElementById('reset-btn');
         const planeBtn = document.getElementById('plane-btn');
+        const shadowBtn = document.getElementById('shadow-btn');
 
         /* ── Create PlayCanvas application ── */
         const app = new pc.Application(canvas, {
@@ -336,6 +366,55 @@
 
         ground.enabled = false;
         app.root.addChild(ground);
+
+        /* ── Shadow blob plane ── */
+        const shadow = new pc.Entity('shadow-plane');
+        shadow.addComponent('render', { type: 'plane' });
+        shadow.setLocalScale(3, 1, 3);
+        shadow.setPosition(0, 0.001, 0);
+
+        /* Soft circular shadow texture */
+        const shTexSize = 256;
+        const shTexData = new Uint8Array(shTexSize * shTexSize * 4);
+        for (let y = 0; y < shTexSize; y++) {
+            for (let x = 0; x < shTexSize; x++) {
+                const u = (x / (shTexSize - 1)) * 2 - 1;
+                const v = (y / (shTexSize - 1)) * 2 - 1;
+                const dist = Math.sqrt(u * u + v * v);
+                const alpha = Math.max(0, 1 - Math.pow(Math.min(dist, 1), 1.2));
+                const i = (y * shTexSize + x) * 4;
+                shTexData[i] = 0; shTexData[i+1] = 0; shTexData[i+2] = 0;
+                shTexData[i+3] = Math.round(alpha * 160);
+            }
+        }
+        const shadowTex = new pc.Texture(app.graphicsDevice, {
+            width: shTexSize, height: shTexSize,
+            format: pc.PIXELFORMAT_RGBA8,
+            addressU: pc.ADDRESS_CLAMP_TO_EDGE,
+            addressV: pc.ADDRESS_CLAMP_TO_EDGE,
+            minFilter: pc.FILTER_LINEAR,
+            magFilter: pc.FILTER_LINEAR
+        });
+        shadowTex.lock().set(shTexData);
+        shadowTex.unlock();
+
+        const shadowMat = new pc.StandardMaterial();
+        shadowMat.diffuse = new pc.Color(0, 0, 0);
+        shadowMat.opacityMap = shadowTex;
+        shadowMat.opacityMapChannel = 'a';
+        shadowMat.blendType = pc.BLEND_NORMAL;
+        shadowMat.depthWrite = false;
+        shadowMat.cull = pc.CULLFACE_NONE;
+        shadowMat.update();
+        shadow.render.meshInstances[0].material = shadowMat;
+
+        app.root.addChild(shadow);
+
+        /* Toggle shadow */
+        shadowBtn.addEventListener('click', () => {
+            shadow.enabled = !shadow.enabled;
+            shadowBtn.classList.toggle('active');
+        });
 
         /* Toggle ground plane */
         planeBtn.addEventListener('click', () => {
@@ -601,11 +680,15 @@
                         initialOrbit.yaw = orbit.yaw;
                         initialOrbit.pitch = orbit.pitch;
 
-                        /* Position ground plane at bottom of splat */
+                        /* Position ground plane and shadow at bottom of splat */
                         const groundY = center.y - halfExtents.y;
                         ground.setPosition(center.x, groundY, center.z);
                         const planeSize = Math.max(halfExtents.x, halfExtents.z) * 4;
                         ground.setLocalScale(planeSize, 1, planeSize);
+
+                        shadow.setPosition(center.x, groundY + 0.001, center.z);
+                        const shadowSize = Math.max(halfExtents.x, halfExtents.z) * 2.5;
+                        shadow.setLocalScale(shadowSize, 1, shadowSize);
                     }
 
                     /* Show 100% before hiding */
@@ -621,6 +704,7 @@
 
                     resetBtn.style.display = 'flex';
                     planeBtn.style.display = 'flex';
+                    shadowBtn.style.display = 'flex';
 
                     if (firstLoad) {
                         hint.classList.add('visible');
