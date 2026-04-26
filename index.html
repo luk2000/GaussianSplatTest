@@ -299,7 +299,7 @@
         app.setCanvasFillMode(pc.FILLMODE_FILL_WINDOW);
         app.setCanvasResolution(pc.RESOLUTION_AUTO);
         const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-        if (isMobile) app.graphicsDevice.maxPixelRatio = 1.5;
+        if (isMobile) app.graphicsDevice.maxPixelRatio = 1.0;
         app.start();
 
         window.addEventListener('resize', () => app.resizeCanvas());
@@ -671,7 +671,10 @@
                             halfExtents.y * halfExtents.y +
                             halfExtents.z * halfExtents.z
                         );
-                        const dist = radius * 2.5;
+                        /* Zoom out more on portrait/mobile screens so object fits */
+                        const aspect = canvas.width / canvas.height;
+                        const distMul = aspect < 1 ? 3.5 : 2.5;
+                        const dist = radius * distMul;
                         orbit.targetLookAt.set(center.x, center.y, center.z);
                         orbit.lookAt.set(center.x, center.y, center.z);
                         orbit.targetDistance = dist;
