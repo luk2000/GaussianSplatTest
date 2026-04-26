@@ -226,7 +226,7 @@
     <button id="shadow-btn" class="active" title="Toggle shadow">●</button>
 
     <!-- Ground Plane Toggle -->
-    <button id="plane-btn" title="Toggle ground plane">⬚</button>
+    <button id="plane-btn" class="active" title="Toggle ground plane">⬚</button>
 
     <!-- Reset Camera -->
     <button id="reset-btn" title="Reset camera">⟲</button>
@@ -364,7 +364,6 @@
         groundMat.update();
         ground.render.meshInstances[0].material = groundMat;
 
-        ground.enabled = false;
         app.root.addChild(ground);
 
         /* ── Shadow blob plane ── */
