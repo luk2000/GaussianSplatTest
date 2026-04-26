@@ -223,7 +223,7 @@
     <div id="splat-selector"><select id="splat-select"></select></div>
 
     <!-- Shadow Toggle -->
-    <button id="shadow-btn" class="active" title="Toggle shadow">●</button>
+    <button id="shadow-btn" title="Toggle shadow">●</button>
 
     <!-- Ground Plane Toggle -->
     <button id="plane-btn" class="active" title="Toggle ground plane">⬚</button>
@@ -242,6 +242,7 @@
     /** List of available splat files – add entries here to populate the selector */
     const SPLAT_FILES = [
         { label: 'Addidas 80k', url: './Addidas_80k.sog' },
+        { label: 'Addidas Ringblitz 80k', url: './Addidas_Ringblitz_80k.sog' },
     ];
 
     /** Initial camera position [x, y, z] */
@@ -353,7 +354,7 @@
         opacityTex.unlock();
 
         const groundMat = new pc.StandardMaterial();
-        groundMat.diffuse = new pc.Color(0.15, 0.15, 0.18);
+        groundMat.diffuse = new pc.Color(0.25, 0.25, 0.28);
         groundMat.opacityMap = opacityTex;
         groundMat.opacityMapChannel = 'a';
         groundMat.blendType = pc.BLEND_NORMAL;
@@ -405,6 +406,7 @@
         shadowMat.update();
         shadow.render.meshInstances[0].material = shadowMat;
 
+        shadow.enabled = false;
         app.root.addChild(shadow);
 
         /* Toggle shadow */
