@@ -480,7 +480,7 @@
             if (orbit.dragging) {
                 orbit.targetYaw   -= dx * 0.3;
                 orbit.targetPitch += dy * 0.3;
-                orbit.targetPitch = Math.max(-89, Math.min(89, orbit.targetPitch));
+                orbit.targetPitch = Math.max(0, Math.min(89, orbit.targetPitch));
             }
             if (orbit.panning) {
                 const panSpeed = orbit.distance * 0.002;
