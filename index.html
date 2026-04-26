@@ -298,6 +298,7 @@
 
         app.setCanvasFillMode(pc.FILLMODE_FILL_WINDOW);
         app.setCanvasResolution(pc.RESOLUTION_AUTO);
+        app.graphicsDevice.maxPixelRatio = Math.min(window.devicePixelRatio, 1.5);
         app.start();
 
         window.addEventListener('resize', () => app.resizeCanvas());
