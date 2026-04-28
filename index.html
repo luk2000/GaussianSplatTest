@@ -878,9 +878,13 @@
         /* Also show AR button if device gains XR capability later */
         if (SHOW_AR_BUTTON && app.xr) {
             app.xr.on('available:' + pc.XRTYPE_AR, (available) => {
+                dbgLog('AR available event fired: ' + available);
                 arBtn.style.display = available ? 'flex' : 'none';
             });
         }
+
+        /* Debug: log current button visibility */
+        dbgLog('AR btn display: ' + arBtn.style.display + ' / computed: ' + getComputedStyle(arBtn).display);
 
     })();
     </script>
