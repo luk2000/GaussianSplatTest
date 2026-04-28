@@ -324,7 +324,7 @@
     const SHOW_AR_BUTTON = true;
 
     /** Scale of the object in AR (1.0 = original, 0.1 = 10% size) */
-    const AR_SCALE = 0.1;
+    const AR_SCALE = 0.08;
 
     /* ================================================================
      *  APPLICATION INIT
@@ -591,6 +591,9 @@
         canvas.addEventListener('touchstart', stopAutoRotate);
 
         app.on('update', (dt) => {
+            /* Skip orbit controls entirely during AR — XR controls the camera */
+            if (app.xr && app.xr.active) return;
+
             if (autoRotate) {
                 orbit.targetYaw -= AUTO_ROTATE_SPEED * dt;
                 orbit.yaw = orbit.targetYaw;
@@ -837,6 +840,9 @@
 
                         savedClearColor = camera.camera.clearColor.clone();
                         camera.camera.clearColor = new pc.Color(0, 0, 0, 0);
+
+                        /* Disable auto-rotate and orbit in AR */
+                        autoRotate = false;
 
                         ground.enabled = false;
                         shadow.enabled = false;
