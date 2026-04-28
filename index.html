@@ -176,6 +176,38 @@
             color: #fff;
         }
 
+        /* ── AR Button ── */
+        #ar-btn {
+            position: fixed;
+            bottom: 16px;
+            right: 148px;
+            height: 36px;
+            padding: 0 14px;
+            border: none;
+            border-radius: 8px;
+            background: rgba(0, 0, 0, 0.4);
+            color: rgba(255, 255, 255, 0.7);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            z-index: 50;
+            display: none;
+            align-items: center;
+            gap: 6px;
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            transition: background 0.2s, color 0.2s;
+        }
+        #ar-btn:hover {
+            background: rgba(0, 0, 0, 0.6);
+            color: #fff;
+        }
+        #ar-btn.active {
+            background: rgba(100, 130, 255, 0.4);
+            color: #fff;
+        }
+
         /* ── Splat Selector ── */
         #splat-selector {
             position: fixed;
@@ -221,6 +253,9 @@
 
     <!-- Splat Selector -->
     <div id="splat-selector"><select id="splat-select"></select></div>
+
+    <!-- AR Button -->
+    <button id="ar-btn" title="View in AR">AR</button>
 
     <!-- Shadow Toggle -->
     <button id="shadow-btn" title="Toggle shadow">●</button>
@@ -270,6 +305,9 @@
     /** Auto-rotate speed in degrees per second (0 to disable) */
     const AUTO_ROTATE_SPEED = 15;
 
+    /** Show AR button (requires WebXR-capable device) */
+    const SHOW_AR_BUTTON = false;
+
     /* ================================================================
      *  APPLICATION INIT
      * ================================================================ */
@@ -283,6 +321,7 @@
         const resetBtn = document.getElementById('reset-btn');
         const planeBtn = document.getElementById('plane-btn');
         const shadowBtn = document.getElementById('shadow-btn');
+        const arBtn    = document.getElementById('ar-btn');
 
         /* ── Create PlayCanvas application ── */
         const app = new pc.Application(canvas, {
@@ -747,6 +786,64 @@
 
         /* Load first splat */
         loadSplat(SPLAT_FILES[0].url);
+
+        /* ================================================================
+         *  AR / MIXED REALITY (WebXR)
+         * ================================================================ */
+        if (SHOW_AR_BUTTON && app.xr && app.xr.isAvailable(pc.XRTYPE_AR)) {
+            arBtn.style.display = 'flex';
+
+            let savedClearColor = null;
+
+            arBtn.addEventListener('click', () => {
+                if (app.xr.active) {
+                    app.xr.end();
+                } else {
+                    /* Save current clear color and set to transparent for AR passthrough */
+                    savedClearColor = camera.camera.clearColor.clone();
+                    camera.camera.clearColor = new pc.Color(0, 0, 0, 0);
+
+                    /* Hide ground plane and shadow in AR */
+                    ground.enabled = false;
+                    shadow.enabled = false;
+
+                    app.xr.start(camera.camera, pc.XRTYPE_AR, pc.XRSPACE_LOCALFLOOR, {
+                        callback: (err) => {
+                            if (err) {
+                                console.error('AR session failed:', err);
+                                /* Restore clear color on failure */
+                                if (savedClearColor) camera.camera.clearColor = savedClearColor;
+                            }
+                        }
+                    });
+                }
+            });
+
+            app.xr.on('start', () => {
+                arBtn.classList.add('active');
+                arBtn.textContent = 'Exit AR';
+            });
+
+            app.xr.on('end', () => {
+                arBtn.classList.remove('active');
+                arBtn.textContent = 'AR';
+                /* Restore clear color */
+                if (savedClearColor) {
+                    camera.camera.clearColor = savedClearColor;
+                    savedClearColor = null;
+                }
+                /* Restore ground/shadow to their toggle state */
+                ground.enabled = planeBtn.classList.contains('active');
+                shadow.enabled = shadowBtn.classList.contains('active');
+            });
+        }
+
+        /* Also show AR button if device gains XR capability later */
+        if (SHOW_AR_BUTTON && app.xr) {
+            app.xr.on('available:' + pc.XRTYPE_AR, (available) => {
+                arBtn.style.display = available ? 'flex' : 'none';
+            });
+        }
 
     })();
     </script>
