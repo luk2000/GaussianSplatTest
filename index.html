@@ -799,6 +799,8 @@
                 if (app.xr.active) {
                     app.xr.end();
                 } else {
+                    arBtn.textContent = 'Starting…';
+
                     /* Save current clear color and set to transparent for AR passthrough */
                     savedClearColor = camera.camera.clearColor.clone();
                     camera.camera.clearColor = new pc.Color(0, 0, 0, 0);
@@ -811,8 +813,15 @@
                         callback: (err) => {
                             if (err) {
                                 console.error('AR session failed:', err);
+                                arBtn.textContent = 'AR';
+                                alert('AR konnte nicht gestartet werden: ' + (err.message || err));
                                 /* Restore clear color on failure */
-                                if (savedClearColor) camera.camera.clearColor = savedClearColor;
+                                if (savedClearColor) {
+                                    camera.camera.clearColor = savedClearColor;
+                                    savedClearColor = null;
+                                }
+                                ground.enabled = planeBtn.classList.contains('active');
+                                shadow.enabled = shadowBtn.classList.contains('active');
                             }
                         }
                     });
