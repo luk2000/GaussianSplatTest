@@ -865,10 +865,16 @@
                             placed = false;
                         }
 
+                        /* Set DOM overlay root via PlayCanvas API */
                         const overlayEl = document.getElementById('ar-overlay');
+                        if (app.xr.domOverlay) {
+                            app.xr.domOverlay.root = overlayEl;
+                            dbgLog('DOM overlay root set');
+                        } else {
+                            dbgLog('No domOverlay API on app.xr');
+                        }
+
                         app.xr.start(camera.camera, pc.XRTYPE_AR, pc.XRSPACE_LOCALFLOOR, {
-                            optionalFeatures: ['dom-overlay'],
-                            domOverlay: { root: overlayEl },
                             callback: (err) => {
                                 if (err) {
                                     dbgLog('AR FAILED: ' + (err.message || err));
