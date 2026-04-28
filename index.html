@@ -270,7 +270,7 @@
     <div id="debug" style="position:fixed;top:50px;left:10px;right:10px;max-height:40%;overflow-y:auto;background:rgba(0,0,0,0.85);color:#0f0;font:12px monospace;padding:10px;border-radius:8px;z-index:999;display:none;white-space:pre-wrap;word-break:break-all;"></div>
     <script>
     const dbg = document.getElementById('debug');
-    const DEBUG = false;
+    const DEBUG = true;
     function dbgLog(msg) {
         if (!DEBUG) return;
         dbg.style.display = 'block';
@@ -279,6 +279,11 @@
     }
     window.onerror = (m,s,l,c,e) => dbgLog('ERR: ' + m);
     window.addEventListener('unhandledrejection', e => dbgLog('REJECT: ' + e.reason));
+
+    /* Global tap/click detection for debug */
+    window.addEventListener('touchstart', (e) => dbgLog('TOUCH START on: ' + e.target.tagName + '#' + (e.target.id || '')), true);
+    window.addEventListener('touchend', (e) => dbgLog('TOUCH END on: ' + e.target.tagName + '#' + (e.target.id || '')), true);
+    window.addEventListener('click', (e) => dbgLog('CLICK on: ' + e.target.tagName + '#' + (e.target.id || '')), true);
     </script>
 
     <!-- PlayCanvas Engine -->
@@ -881,10 +886,14 @@
                     arBtn.classList.add('active');
                     arBtn.textContent = 'Tap to place';
 
-                    /* Hide splat until user taps */
-                    if (currentSplatEntity) currentSplatEntity.enabled = false;
+                    /* Show splat immediately in front of camera */
+                    if (currentSplatEntity) {
+                        currentSplatEntity.setPosition(0, 0, -1);
+                        currentSplatEntity.setEulerAngles(180, 0, 0);
+                        currentSplatEntity.enabled = true;
+                    }
 
-                    /* Store last hit position, but don't move the object */
+                    /* Track last hit position for tap-to-place */
                     let lastHitPosition = null;
 
                     if (app.xr.hitTest && app.xr.hitTest.supported) {
@@ -902,6 +911,10 @@
                                 source.on('result', (position, rotation) => {
                                     if (!placed) {
                                         lastHitPosition = position.clone();
+                                        /* Move object to follow surface in real-time until placed */
+                                        if (currentSplatEntity) {
+                                            currentSplatEntity.setPosition(position.x, position.y, position.z);
+                                        }
                                     }
                                 });
                             }
@@ -910,31 +923,37 @@
                         dbgLog('Hit test NOT supported');
                     }
 
-                    /* Tap to place: use last known hit position */
-                    function onTapToPlace() {
+                    /* Tap to place: anchor at current position */
+                    function onTapToPlace(e) {
+                        dbgLog('Tap detected! placed=' + placed + ' active=' + app.xr.active);
                         if (!app.xr.active || placed || !currentSplatEntity) return;
 
-                        if (lastHitPosition) {
-                            currentSplatEntity.setPosition(lastHitPosition.x, lastHitPosition.y, lastHitPosition.z);
-                            currentSplatEntity.setEulerAngles(180, 0, 0);
-                            currentSplatEntity.enabled = true;
-                            placed = true;
-                            arBtn.textContent = 'Exit AR';
-                            dbgLog('Object placed at: ' + lastHitPosition.x.toFixed(2) + ', ' + lastHitPosition.y.toFixed(2) + ', ' + lastHitPosition.z.toFixed(2));
-                        } else {
-                            dbgLog('No surface found yet — point at a flat surface');
-                        }
+                        placed = true;
+                        arBtn.textContent = 'Exit AR';
+                        dbgLog('Object anchored at current position');
 
                         if (hitTestSource) {
                             hitTestSource.remove();
                             hitTestSource = null;
                         }
                     }
-                    canvas.addEventListener('touchend', onTapToPlace);
 
-                    /* Clean up listener when AR ends */
+                    /* Listen for taps via multiple methods for reliability */
+                    canvas.addEventListener('touchstart', onTapToPlace);
+                    canvas.addEventListener('click', onTapToPlace);
+
+                    /* Also use XR input select event */
+                    function onXrSelect(inputSource) {
+                        dbgLog('XR select event fired');
+                        onTapToPlace();
+                    }
+                    app.xr.input.on('select', onXrSelect);
+
+                    /* Clean up listeners when AR ends */
                     app.xr.once('end', () => {
-                        canvas.removeEventListener('touchend', onTapToPlace);
+                        canvas.removeEventListener('touchstart', onTapToPlace);
+                        canvas.removeEventListener('click', onTapToPlace);
+                        app.xr.input.off('select', onXrSelect);
                     });
                 });
 
