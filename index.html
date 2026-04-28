@@ -248,6 +248,14 @@
         <div id="error-message"></div>
     </div>
 
+    <!-- DOM Overlay container for WebXR AR (keeps UI visible in AR) -->
+    <div id="ar-overlay" style="position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:9999;">
+        <!-- Debug Overlay -->
+        <div id="debug" style="position:fixed;top:50px;left:10px;right:10px;max-height:40%;overflow-y:auto;background:rgba(0,0,0,0.85);color:#0f0;font:12px monospace;padding:10px;border-radius:8px;z-index:99999;display:none;white-space:pre-wrap;word-break:break-all;pointer-events:auto;"></div>
+        <!-- AR exit button (visible in AR) -->
+        <button id="ar-exit-btn" style="display:none;position:fixed;bottom:30px;left:50%;transform:translateX(-50%);padding:14px 28px;font-size:16px;background:rgba(0,0,0,0.7);color:#fff;border:2px solid #fff;border-radius:12px;z-index:99999;pointer-events:auto;">Exit AR</button>
+    </div>
+
     <!-- Interaction Hint -->
     <div id="hint">drag to rotate · scroll to zoom · right-drag to pan</div>
 
@@ -265,9 +273,6 @@
 
     <!-- Reset Camera -->
     <button id="reset-btn" title="Reset camera">⟲</button>
-
-    <!-- Debug Overlay -->
-    <div id="debug" style="position:fixed;top:50px;left:10px;right:10px;max-height:40%;overflow-y:auto;background:rgba(0,0,0,0.85);color:#0f0;font:12px monospace;padding:10px;border-radius:8px;z-index:999;display:none;white-space:pre-wrap;word-break:break-all;"></div>
     <script>
     const dbg = document.getElementById('debug');
     const DEBUG = true;
@@ -860,7 +865,10 @@
                             placed = false;
                         }
 
+                        const overlayEl = document.getElementById('ar-overlay');
                         app.xr.start(camera.camera, pc.XRTYPE_AR, pc.XRSPACE_LOCALFLOOR, {
+                            optionalFeatures: ['dom-overlay'],
+                            domOverlay: { root: overlayEl },
                             callback: (err) => {
                                 if (err) {
                                     dbgLog('AR FAILED: ' + (err.message || err));
@@ -883,8 +891,19 @@
 
                 app.xr.on('start', () => {
                     dbgLog('AR session STARTED');
+                    const arExitBtn = document.getElementById('ar-exit-btn');
+                    arExitBtn.style.display = 'block';
+                    arExitBtn.onclick = () => app.xr.end();
                     arBtn.classList.add('active');
                     arBtn.textContent = 'Tap to place';
+
+                    /* Check if DOM overlay was granted */
+                    const session = app.xr.session;
+                    if (session && session.domOverlayState) {
+                        dbgLog('DOM overlay type: ' + session.domOverlayState.type);
+                    } else {
+                        dbgLog('DOM overlay NOT granted');
+                    }
 
                     /* Show splat immediately in front of camera */
                     if (currentSplatEntity) {
@@ -959,6 +978,7 @@
 
                 app.xr.on('end', () => {
                     dbgLog('AR session ENDED');
+                    document.getElementById('ar-exit-btn').style.display = 'none';
                     arBtn.classList.remove('active');
                     arBtn.textContent = 'AR';
                     placed = false;
