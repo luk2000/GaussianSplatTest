@@ -346,8 +346,8 @@
     /** Show AR button (requires WebXR-capable device) */
     const SHOW_AR_BUTTON = true;
 
-    /** Scale of the object in AR (1.0 = original, 0.1 = 10% size) */
-    const AR_SCALE = 0.01;
+    /** Desired AR object size: longest side in centimeters */
+    const AR_SIZE_CM = 30;
 
     /* ================================================================
      *  APPLICATION INIT
@@ -870,10 +870,20 @@
                         ground.enabled = false;
                         shadow.enabled = false;
 
-                        /* Scale down splat for AR */
+                        /* Scale splat to fit AR_SIZE_CM based on bounding box */
                         if (currentSplatEntity) {
                             savedScale = currentSplatEntity.getLocalScale().clone();
-                            currentSplatEntity.setLocalScale(AR_SCALE, AR_SCALE, AR_SCALE);
+                            const arAabb = currentSplatEntity.gsplat && currentSplatEntity.gsplat.instance
+                                ? currentSplatEntity.gsplat.instance.meshInstance.aabb : null;
+                            let arScale = 0.01;
+                            if (arAabb) {
+                                const he = arAabb.halfExtents;
+                                const longestSide = Math.max(he.x, he.y, he.z) * 2; /* full extent in engine units (meters) */
+                                const targetMeters = AR_SIZE_CM / 100;
+                                arScale = targetMeters / longestSide;
+                                dbgLog('AR AABB longest=' + longestSide.toFixed(2) + 'm, scale=' + arScale.toFixed(4));
+                            }
+                            currentSplatEntity.setLocalScale(arScale, arScale, arScale);
                             currentSplatEntity.setPosition(0, 0, -1);
                             placed = false;
                         }
