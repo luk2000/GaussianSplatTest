@@ -266,6 +266,19 @@
     <!-- Reset Camera -->
     <button id="reset-btn" title="Reset camera">⟲</button>
 
+    <!-- Debug Overlay -->
+    <div id="debug" style="position:fixed;top:50px;left:10px;right:10px;max-height:40%;overflow-y:auto;background:rgba(0,0,0,0.85);color:#0f0;font:12px monospace;padding:10px;border-radius:8px;z-index:999;display:none;white-space:pre-wrap;word-break:break-all;"></div>
+    <script>
+    const dbg = document.getElementById('debug');
+    function dbgLog(msg) {
+        dbg.style.display = 'block';
+        dbg.textContent += msg + '\n';
+        dbg.scrollTop = dbg.scrollHeight;
+    }
+    window.onerror = (m,s,l,c,e) => dbgLog('ERR: ' + m);
+    window.addEventListener('unhandledrejection', e => dbgLog('REJECT: ' + e.reason));
+    </script>
+
     <!-- PlayCanvas Engine -->
     <script src="https://cdn.jsdelivr.net/npm/playcanvas@2.17.0/build/playcanvas.js"></script>
 
@@ -790,16 +803,26 @@
         /* ================================================================
          *  AR / MIXED REALITY (WebXR)
          * ================================================================ */
+        dbgLog('XR support: ' + (app.xr ? 'yes' : 'no'));
+        if (app.xr) {
+            dbgLog('AR available: ' + app.xr.isAvailable(pc.XRTYPE_AR));
+            dbgLog('VR available: ' + app.xr.isAvailable(pc.XRTYPE_VR));
+        }
+
         if (SHOW_AR_BUTTON && app.xr && app.xr.isAvailable(pc.XRTYPE_AR)) {
             arBtn.style.display = 'flex';
+            dbgLog('AR button shown');
 
             let savedClearColor = null;
 
             arBtn.addEventListener('click', () => {
+                dbgLog('AR button clicked');
                 if (app.xr.active) {
+                    dbgLog('Ending AR session');
                     app.xr.end();
                 } else {
                     arBtn.textContent = 'Starting…';
+                    dbgLog('Starting AR session...');
 
                     /* Save current clear color and set to transparent for AR passthrough */
                     savedClearColor = camera.camera.clearColor.clone();
@@ -812,9 +835,8 @@
                     app.xr.start(camera.camera, pc.XRTYPE_AR, pc.XRSPACE_LOCALFLOOR, {
                         callback: (err) => {
                             if (err) {
-                                console.error('AR session failed:', err);
+                                dbgLog('AR FAILED: ' + (err.message || err));
                                 arBtn.textContent = 'AR';
-                                alert('AR konnte nicht gestartet werden: ' + (err.message || err));
                                 /* Restore clear color on failure */
                                 if (savedClearColor) {
                                     camera.camera.clearColor = savedClearColor;
@@ -829,11 +851,13 @@
             });
 
             app.xr.on('start', () => {
+                dbgLog('AR session STARTED');
                 arBtn.classList.add('active');
                 arBtn.textContent = 'Exit AR';
             });
 
             app.xr.on('end', () => {
+                dbgLog('AR session ENDED');
                 arBtn.classList.remove('active');
                 arBtn.textContent = 'AR';
                 /* Restore clear color */
@@ -845,6 +869,10 @@
                 ground.enabled = planeBtn.classList.contains('active');
                 shadow.enabled = shadowBtn.classList.contains('active');
             });
+        }
+
+        if (SHOW_AR_BUTTON && !(app.xr && app.xr.isAvailable(pc.XRTYPE_AR))) {
+            dbgLog('AR NOT available — button hidden');
         }
 
         /* Also show AR button if device gains XR capability later */
