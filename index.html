@@ -875,6 +875,9 @@
                     arBtn.classList.add('active');
                     arBtn.textContent = 'Tap to place';
 
+                    /* Hide splat until first hit result */
+                    if (currentSplatEntity) currentSplatEntity.enabled = false;
+
                     /* Start hit testing from screen center */
                     if (app.xr.hitTest && app.xr.hitTest.supported) {
                         dbgLog('Hit test supported, starting...');
@@ -889,31 +892,34 @@
                                 dbgLog('Hit test active');
 
                                 source.on('result', (position, rotation) => {
-                                    /* Show splat at hit position as preview */
                                     if (!placed && currentSplatEntity) {
+                                        /* Show preview at hit position, keep upright */
+                                        currentSplatEntity.enabled = true;
                                         currentSplatEntity.setPosition(position.x, position.y, position.z);
-                                        currentSplatEntity.setRotation(rotation);
+                                        currentSplatEntity.setEulerAngles(180, 0, 0);
                                     }
                                 });
                             }
                         });
                     } else {
                         dbgLog('Hit test NOT supported');
+                        /* No hit test — just show splat in front of camera */
+                        if (currentSplatEntity) currentSplatEntity.enabled = true;
                     }
                 });
 
-                /* Tap to place: listen for select events from input sources */
-                app.xr.input.on('select', (inputSource) => {
-                    if (!placed && currentSplatEntity) {
-                        placed = true;
-                        arBtn.textContent = 'Exit AR';
-                        dbgLog('Object placed!');
-                        if (hitTestSource) {
-                            hitTestSource.remove();
-                            hitTestSource = null;
-                        }
+                /* Tap to place: listen for touch on canvas (not xr select which fires immediately) */
+                function onTapToPlace() {
+                    if (!app.xr.active || placed || !currentSplatEntity) return;
+                    placed = true;
+                    arBtn.textContent = 'Exit AR';
+                    dbgLog('Object placed!');
+                    if (hitTestSource) {
+                        hitTestSource.remove();
+                        hitTestSource = null;
                     }
-                });
+                }
+                canvas.addEventListener('touchend', onTapToPlace);
 
                 app.xr.on('end', () => {
                     dbgLog('AR session ENDED');
@@ -925,8 +931,9 @@
                         camera.camera.clearColor = savedClearColor;
                         savedClearColor = null;
                     }
-                    /* Restore scale */
+                    /* Restore scale and visibility */
                     if (savedScale && currentSplatEntity) {
+                        currentSplatEntity.enabled = true;
                         currentSplatEntity.setLocalScale(savedScale.x, savedScale.y, savedScale.z);
                         currentSplatEntity.setEulerAngles(180, 0, 0);
                         savedScale = null;
