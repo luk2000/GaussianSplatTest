@@ -270,7 +270,9 @@
     <div id="debug" style="position:fixed;top:50px;left:10px;right:10px;max-height:40%;overflow-y:auto;background:rgba(0,0,0,0.85);color:#0f0;font:12px monospace;padding:10px;border-radius:8px;z-index:999;display:none;white-space:pre-wrap;word-break:break-all;"></div>
     <script>
     const dbg = document.getElementById('debug');
+    const DEBUG = false;
     function dbgLog(msg) {
+        if (!DEBUG) return;
         dbg.style.display = 'block';
         dbg.textContent += msg + '\n';
         dbg.scrollTop = dbg.scrollHeight;
