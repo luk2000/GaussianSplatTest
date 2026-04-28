@@ -321,6 +321,9 @@
     /** Show AR button (requires WebXR-capable device) */
     const SHOW_AR_BUTTON = true;
 
+    /** Scale of the object in AR (1.0 = original, 0.1 = 10% size) */
+    const AR_SCALE = 0.1;
+
     /* ================================================================
      *  APPLICATION INIT
      * ================================================================ */
@@ -811,7 +814,10 @@
 
         if (SHOW_AR_BUTTON && app.xr) {
             let savedClearColor = null;
+            let savedScale = null;
             let arInitialized = false;
+            let hitTestSource = null;
+            let placed = false;
 
             function initAR() {
                 if (arInitialized) return;
@@ -833,6 +839,14 @@
                         ground.enabled = false;
                         shadow.enabled = false;
 
+                        /* Scale down splat for AR */
+                        if (currentSplatEntity) {
+                            savedScale = currentSplatEntity.getLocalScale().clone();
+                            currentSplatEntity.setLocalScale(AR_SCALE, AR_SCALE, AR_SCALE);
+                            currentSplatEntity.setPosition(0, 0, -1);
+                            placed = false;
+                        }
+
                         app.xr.start(camera.camera, pc.XRTYPE_AR, pc.XRSPACE_LOCALFLOOR, {
                             callback: (err) => {
                                 if (err) {
@@ -841,6 +855,10 @@
                                     if (savedClearColor) {
                                         camera.camera.clearColor = savedClearColor;
                                         savedClearColor = null;
+                                    }
+                                    if (savedScale && currentSplatEntity) {
+                                        currentSplatEntity.setLocalScale(savedScale.x, savedScale.y, savedScale.z);
+                                        savedScale = null;
                                     }
                                     ground.enabled = planeBtn.classList.contains('active');
                                     shadow.enabled = shadowBtn.classList.contains('active');
@@ -853,16 +871,67 @@
                 app.xr.on('start', () => {
                     dbgLog('AR session STARTED');
                     arBtn.classList.add('active');
-                    arBtn.textContent = 'Exit AR';
+                    arBtn.textContent = 'Tap to place';
+
+                    /* Start hit testing from screen center */
+                    if (app.xr.hitTest && app.xr.hitTest.supported) {
+                        dbgLog('Hit test supported, starting...');
+                        app.xr.hitTest.start({
+                            spaceType: pc.XRSPACE_VIEWER,
+                            callback: (err, source) => {
+                                if (err) {
+                                    dbgLog('Hit test error: ' + err);
+                                    return;
+                                }
+                                hitTestSource = source;
+                                dbgLog('Hit test active');
+
+                                source.on('result', (position, rotation) => {
+                                    /* Show splat at hit position as preview */
+                                    if (!placed && currentSplatEntity) {
+                                        currentSplatEntity.setPosition(position.x, position.y, position.z);
+                                        currentSplatEntity.setRotation(rotation);
+                                    }
+                                });
+                            }
+                        });
+                    } else {
+                        dbgLog('Hit test NOT supported');
+                    }
+                });
+
+                /* Tap to place: listen for select events from input sources */
+                app.xr.input.on('select', (inputSource) => {
+                    if (!placed && currentSplatEntity) {
+                        placed = true;
+                        arBtn.textContent = 'Exit AR';
+                        dbgLog('Object placed!');
+                        if (hitTestSource) {
+                            hitTestSource.remove();
+                            hitTestSource = null;
+                        }
+                    }
                 });
 
                 app.xr.on('end', () => {
                     dbgLog('AR session ENDED');
                     arBtn.classList.remove('active');
                     arBtn.textContent = 'AR';
+                    placed = false;
+
                     if (savedClearColor) {
                         camera.camera.clearColor = savedClearColor;
                         savedClearColor = null;
+                    }
+                    /* Restore scale */
+                    if (savedScale && currentSplatEntity) {
+                        currentSplatEntity.setLocalScale(savedScale.x, savedScale.y, savedScale.z);
+                        currentSplatEntity.setEulerAngles(180, 0, 0);
+                        savedScale = null;
+                    }
+                    if (hitTestSource) {
+                        hitTestSource.remove();
+                        hitTestSource = null;
                     }
                     ground.enabled = planeBtn.classList.contains('active');
                     shadow.enabled = shadowBtn.classList.contains('active');
