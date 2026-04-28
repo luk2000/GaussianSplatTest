@@ -933,7 +933,12 @@
                                 hitTestSource = source;
                                 dbgLog('Hit test active');
 
+                                let hitCount = 0;
                                 source.on('result', (position, rotation) => {
+                                    hitCount++;
+                                    if (hitCount <= 3 || hitCount % 60 === 0) {
+                                        dbgLog('Hit #' + hitCount + ' pos: ' + position.x.toFixed(2) + ',' + position.y.toFixed(2) + ',' + position.z.toFixed(2));
+                                    }
                                     if (!placed) {
                                         lastHitPosition = position.clone();
                                         /* Move object to follow surface in real-time until placed */
