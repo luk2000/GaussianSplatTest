@@ -881,10 +881,12 @@
                     arBtn.classList.add('active');
                     arBtn.textContent = 'Tap to place';
 
-                    /* Hide splat until first hit result */
+                    /* Hide splat until user taps */
                     if (currentSplatEntity) currentSplatEntity.enabled = false;
 
-                    /* Start hit testing from screen center */
+                    /* Store last hit position, but don't move the object */
+                    let lastHitPosition = null;
+
                     if (app.xr.hitTest && app.xr.hitTest.supported) {
                         dbgLog('Hit test supported, starting...');
                         app.xr.hitTest.start({
@@ -898,34 +900,43 @@
                                 dbgLog('Hit test active');
 
                                 source.on('result', (position, rotation) => {
-                                    if (!placed && currentSplatEntity) {
-                                        /* Show preview at hit position, keep upright */
-                                        currentSplatEntity.enabled = true;
-                                        currentSplatEntity.setPosition(position.x, position.y, position.z);
-                                        currentSplatEntity.setEulerAngles(180, 0, 0);
+                                    if (!placed) {
+                                        lastHitPosition = position.clone();
                                     }
                                 });
                             }
                         });
                     } else {
                         dbgLog('Hit test NOT supported');
-                        /* No hit test — just show splat in front of camera */
-                        if (currentSplatEntity) currentSplatEntity.enabled = true;
                     }
-                });
 
-                /* Tap to place: listen for touch on canvas (not xr select which fires immediately) */
-                function onTapToPlace() {
-                    if (!app.xr.active || placed || !currentSplatEntity) return;
-                    placed = true;
-                    arBtn.textContent = 'Exit AR';
-                    dbgLog('Object placed!');
-                    if (hitTestSource) {
-                        hitTestSource.remove();
-                        hitTestSource = null;
+                    /* Tap to place: use last known hit position */
+                    function onTapToPlace() {
+                        if (!app.xr.active || placed || !currentSplatEntity) return;
+
+                        if (lastHitPosition) {
+                            currentSplatEntity.setPosition(lastHitPosition.x, lastHitPosition.y, lastHitPosition.z);
+                            currentSplatEntity.setEulerAngles(180, 0, 0);
+                            currentSplatEntity.enabled = true;
+                            placed = true;
+                            arBtn.textContent = 'Exit AR';
+                            dbgLog('Object placed at: ' + lastHitPosition.x.toFixed(2) + ', ' + lastHitPosition.y.toFixed(2) + ', ' + lastHitPosition.z.toFixed(2));
+                        } else {
+                            dbgLog('No surface found yet — point at a flat surface');
+                        }
+
+                        if (hitTestSource) {
+                            hitTestSource.remove();
+                            hitTestSource = null;
+                        }
                     }
-                }
-                canvas.addEventListener('touchend', onTapToPlace);
+                    canvas.addEventListener('touchend', onTapToPlace);
+
+                    /* Clean up listener when AR ends */
+                    app.xr.once('end', () => {
+                        canvas.removeEventListener('touchend', onTapToPlace);
+                    });
+                });
 
                 app.xr.on('end', () => {
                     dbgLog('AR session ENDED');
