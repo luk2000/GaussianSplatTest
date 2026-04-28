@@ -809,82 +809,80 @@
             dbgLog('VR available: ' + app.xr.isAvailable(pc.XRTYPE_VR));
         }
 
-        if (SHOW_AR_BUTTON && app.xr && app.xr.isAvailable(pc.XRTYPE_AR)) {
-            arBtn.style.display = 'flex';
-            dbgLog('AR button shown');
-
-            let savedClearColor = null;
-
-            arBtn.addEventListener('click', () => {
-                dbgLog('AR button clicked');
-                if (app.xr.active) {
-                    dbgLog('Ending AR session');
-                    app.xr.end();
-                } else {
-                    arBtn.textContent = 'Starting…';
-                    dbgLog('Starting AR session...');
-
-                    /* Save current clear color and set to transparent for AR passthrough */
-                    savedClearColor = camera.camera.clearColor.clone();
-                    camera.camera.clearColor = new pc.Color(0, 0, 0, 0);
-
-                    /* Hide ground plane and shadow in AR */
-                    ground.enabled = false;
-                    shadow.enabled = false;
-
-                    app.xr.start(camera.camera, pc.XRTYPE_AR, pc.XRSPACE_LOCALFLOOR, {
-                        callback: (err) => {
-                            if (err) {
-                                dbgLog('AR FAILED: ' + (err.message || err));
-                                arBtn.textContent = 'AR';
-                                /* Restore clear color on failure */
-                                if (savedClearColor) {
-                                    camera.camera.clearColor = savedClearColor;
-                                    savedClearColor = null;
-                                }
-                                ground.enabled = planeBtn.classList.contains('active');
-                                shadow.enabled = shadowBtn.classList.contains('active');
-                            }
-                        }
-                    });
-                }
-            });
-
-            app.xr.on('start', () => {
-                dbgLog('AR session STARTED');
-                arBtn.classList.add('active');
-                arBtn.textContent = 'Exit AR';
-            });
-
-            app.xr.on('end', () => {
-                dbgLog('AR session ENDED');
-                arBtn.classList.remove('active');
-                arBtn.textContent = 'AR';
-                /* Restore clear color */
-                if (savedClearColor) {
-                    camera.camera.clearColor = savedClearColor;
-                    savedClearColor = null;
-                }
-                /* Restore ground/shadow to their toggle state */
-                ground.enabled = planeBtn.classList.contains('active');
-                shadow.enabled = shadowBtn.classList.contains('active');
-            });
-        }
-
-        if (SHOW_AR_BUTTON && !(app.xr && app.xr.isAvailable(pc.XRTYPE_AR))) {
-            dbgLog('AR NOT available — button hidden');
-        }
-
-        /* Also show AR button if device gains XR capability later */
         if (SHOW_AR_BUTTON && app.xr) {
+            let savedClearColor = null;
+            let arInitialized = false;
+
+            function initAR() {
+                if (arInitialized) return;
+                arInitialized = true;
+                dbgLog('Initializing AR handler');
+
+                arBtn.addEventListener('click', () => {
+                    dbgLog('AR button clicked');
+                    if (app.xr.active) {
+                        dbgLog('Ending AR session');
+                        app.xr.end();
+                    } else {
+                        arBtn.textContent = 'Starting…';
+                        dbgLog('Starting AR session...');
+
+                        savedClearColor = camera.camera.clearColor.clone();
+                        camera.camera.clearColor = new pc.Color(0, 0, 0, 0);
+
+                        ground.enabled = false;
+                        shadow.enabled = false;
+
+                        app.xr.start(camera.camera, pc.XRTYPE_AR, pc.XRSPACE_LOCALFLOOR, {
+                            callback: (err) => {
+                                if (err) {
+                                    dbgLog('AR FAILED: ' + (err.message || err));
+                                    arBtn.textContent = 'AR';
+                                    if (savedClearColor) {
+                                        camera.camera.clearColor = savedClearColor;
+                                        savedClearColor = null;
+                                    }
+                                    ground.enabled = planeBtn.classList.contains('active');
+                                    shadow.enabled = shadowBtn.classList.contains('active');
+                                }
+                            }
+                        });
+                    }
+                });
+
+                app.xr.on('start', () => {
+                    dbgLog('AR session STARTED');
+                    arBtn.classList.add('active');
+                    arBtn.textContent = 'Exit AR';
+                });
+
+                app.xr.on('end', () => {
+                    dbgLog('AR session ENDED');
+                    arBtn.classList.remove('active');
+                    arBtn.textContent = 'AR';
+                    if (savedClearColor) {
+                        camera.camera.clearColor = savedClearColor;
+                        savedClearColor = null;
+                    }
+                    ground.enabled = planeBtn.classList.contains('active');
+                    shadow.enabled = shadowBtn.classList.contains('active');
+                });
+            }
+
+            /* Check immediately */
+            if (app.xr.isAvailable(pc.XRTYPE_AR)) {
+                dbgLog('AR available immediately');
+                arBtn.style.display = 'flex';
+                initAR();
+            }
+
+            /* Also handle late availability */
             app.xr.on('available:' + pc.XRTYPE_AR, (available) => {
-                dbgLog('AR available event fired: ' + available);
+                dbgLog('AR available event: ' + available);
                 arBtn.style.display = available ? 'flex' : 'none';
+                if (available) initAR();
             });
         }
-
-        /* Debug: log current button visibility */
-        dbgLog('AR btn display: ' + arBtn.style.display + ' / computed: ' + getComputedStyle(arBtn).display);
 
     })();
     </script>
